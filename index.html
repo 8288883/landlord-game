@@ -3,10 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>联机斗地主 - 完整正式版</title>
-    <link rel="stylesheet" href="style.css">
+    <title>联机斗地主 - 稳定版</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        body {
+            background: #2c7a35;
+            color: #fff;
+            padding: 10px;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .panel {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .form-item {
+            margin: 12px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        input, select {
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: none;
+            outline: none;
+            font-size: 15px;
+        }
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .status {
+            text-align: center;
+            margin-top: 10px;
+            color: #ccc;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .player-area {
+            margin: 10px 0;
+        }
+        .player-info {
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        .card-back {
+            display: flex;
+            gap: 2px;
+        }
+        .card-back::before {
+            content: "🂠";
+            font-size: 20px;
+            margin-right: 2px;
+        }
+
+        .table-area {
+            min-height: 100px;
+            border: 1px dashed #888;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 15px 0;
+            position: relative;
+        }
+        .base-cards, .last-played {
+            display: flex;
+            gap: 4px;
+            margin: 6px 0;
+            min-height: 40px;
+        }
+
+        .hand-area {
+            margin-top: 20px;
+        }
+        .my-info {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            min-height: 120px;
+        }
+        .card {
+            width: 32px;
+            height: 48px;
+            border-radius: 4px;
+            background: white;
+            color: #222;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            border: 1px solid #333;
+            cursor: pointer;
+        }
+        .card.red {
+            color: red;
+        }
+        .card.selected {
+            background: #ffeb3b;
+            transform: translateY(-6px);
+        }
+        #landlordMark {
+            color: #ffeb3b;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
+
 <div class="container">
     <!-- 房间界面 -->
     <div id="roomDiv" class="panel">
@@ -27,7 +170,7 @@
             <button onclick="createRoom()">创建房间</button>
             <button onclick="joinRoom()">加入房间</button>
         </div>
-        <div id="roomStatus" class="status">等待连接...</div>
+        <div id="roomStatus" class="status">等待连接服务器...</div>
     </div>
 
     <!-- 游戏主界面 -->
@@ -37,7 +180,6 @@
             <div id="turnIndicator">等待开始...</div>
         </div>
 
-        <!-- 其他玩家牌区 -->
         <div class="player-area">
             <div class="player-info" id="player2Info">玩家2: <span>0</span>张</div>
             <div class="card-back" id="player2Cards"></div>
@@ -47,21 +189,21 @@
             <div class="card-back" id="player3Cards"></div>
         </div>
 
-        <!-- 桌面牌区 -->
         <div class="table-area">
+            <div style="font-size:13px;">底牌：</div>
             <div class="base-cards" id="baseCards"></div>
+            <div style="font-size:13px;">上一手：</div>
             <div class="last-played" id="lastPlayedArea"></div>
         </div>
 
-        <!-- 自己的牌区 -->
         <div class="hand-area">
             <div class="my-info" id="myInfo">我: <span>0</span>张 <span id="landlordMark"></span></div>
             <div class="cards-container" id="myCards"></div>
             <div class="btn-group">
                 <button id="playBtn" onclick="playSelected()" disabled>出牌</button>
                 <button id="passBtn" onclick="pass()" disabled>过</button>
-                <button id="callLordBtn" onclick="callLord(1)" style="background:#ff6">叫地主</button>
-                <button id="noLordBtn" onclick="callLord(0)" style="background:#f99">不叫</button>
+                <button id="callLordBtn" onclick="callLord(1)" style="background:#ff6; color:#000; display:none;">叫地主</button>
+                <button id="noLordBtn" onclick="callLord(0)" style="background:#f99; color:#000; display:none;">不叫</button>
             </div>
         </div>
     </div>
