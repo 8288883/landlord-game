@@ -26,7 +26,8 @@ let isMyTurn = false;
 let hasCalledLord = false;
 
 // 更换为更稳定的 WebSocket 中继服务器
-const WS_RELAY = "wss://7eae11e8ddf4a041-112-96-91-81.serveousercontent.com";
+const WS_RELAY = "ws://yd9b87dd.natappfree.cc:1960";
+
 
 
 // ================= 联机逻辑 =================
