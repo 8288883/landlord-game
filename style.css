@@ -1,43 +1,223 @@
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Microsoft YaHei', sans-serif; }
-body { background: #0a5a3a; color: #fff; padding: 15px; }
-.container { max-width: 800px; margin: 0 auto; }
-.panel { background: rgba(0,0,0,0.4); padding: 20px; border-radius: 12px; border: 2px solid #cba; }
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
 
-.form-item { margin: 15px 0; display: flex; align-items: center; gap: 10px; }
-input, select { padding: 8px 12px; border: none; border-radius: 6px; background: #fff3; color: white; font-size: 16px; }
-input::placeholder { color: #fffa; }
-button { padding: 10px 20px; border: none; border-radius: 6px; background: #28a745; color: white; font-size: 16px; cursor: pointer; margin: 5px; }
-button#callLordBtn { background: #ff4136; }
-button#noLordBtn { background: #ff851b; }
-button:disabled { opacity: 0.4; cursor: not-allowed; }
+body {
+    background: #0a5a3a;
+    color: #fff;
+    padding: 12px;
+    min-height: 100vh;
+}
 
-.btn-group { text-align: center; margin: 10px 0; }
-.status { color: #ffd700; margin-top: 10px; font-size: 14px; }
+.container {
+    max-width: 520px;
+    margin: 0 auto;
+}
 
-.game-header { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 18px; }
-.player-area { position: relative; height: 80px; margin-bottom: 10px; }
-.player-info { position: absolute; top: 0; left: 10px; z-index: 10; background: #0008; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+.panel {
+    background: rgba(0, 0, 0, 0.45);
+    padding: 20px;
+    border-radius: 14px;
+    border: 2px solid rgba(204, 187, 170, 0.4);
+    margin-bottom: 16px;
+    backdrop-filter: blur(4px);
+}
+
+.form-item {
+    margin: 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+input, select {
+    padding: 9px 12px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 15px;
+    width: 180px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+input:focus, select:focus {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    background: #28a745;
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+    margin: 6px;
+    transition: all 0.2s;
+    min-width: 90px;
+}
+
+button:hover {
+    opacity: 0.9;
+    transform: scale(1.03);
+}
+
+button#callLordBtn {
+    background: #ff4136;
+    color: #fff;
+}
+
+button#noLordBtn {
+    background: #ff851b;
+    color: #fff;
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-group {
+    text-align: center;
+    margin: 12px 0;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.status {
+    color: #ffd700;
+    margin-top: 12px;
+    font-size: 14px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    font-size: 16px;
+    font-weight: 500;
+    align-items: center;
+}
+
+.player-area {
+    position: relative;
+    height: 70px;
+    margin-bottom: 12px;
+}
+
+.player-info {
+    position: absolute;
+    top: 0;
+    left: 8px;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    backdrop-filter: blur(2px);
+}
+
 .card-back {
-    display: inline-block; width: 45px; height: 65px;
+    display: inline-block;
+    width: 36px;
+    height: 52px;
     background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%);
-    border: 2px solid #fff; border-radius: 6px;
-    margin: 0 2px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    margin: 0 2px;
+    box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.4);
 }
 
-.table-area { text-align: center; margin: 20px 0; min-height: 100px; }
-.base-cards { display: inline-block; margin-bottom: 10px; }
-.last-played { display: flex; justify-content: center; gap: 5px; }
+.table-area {
+    text-align: center;
+    margin: 20px 0;
+    min-height: 110px;
+    padding: 10px;
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
 
-.hand-area { margin-top: 30px; }
-.my-info { text-align: center; margin-bottom: 15px; font-size: 18px; }
-.cards-container { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.base-cards {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 12px;
+    min-height: 50px;
+}
+
+.last-played {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    min-height: 50px;
+}
+
+.hand-area {
+    margin-top: 24px;
+}
+
+.my-info {
+    text-align: center;
+    margin-bottom: 12px;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.cards-container {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    flex-wrap: wrap;
+    min-height: 100px;
+    padding: 0 10px;
+}
+
 .card {
-    width: 50px; height: 70px;
-    background: white; border: 2px solid #333; border-radius: 8px;
-    color: #333; font-weight: bold; font-size: 18px;
-    cursor: pointer; transition: transform 0.2s;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+    width: 40px;
+    height: 58px;
+    background: #fff;
+    border: 2px solid #333;
+    border-radius: 8px;
+    color: #222;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 1px 1px 6px rgba(0, 0, 0, 0.3);
 }
-.card.selected { transform: translateY(-15px); border-color: #0074d9; background: #e0f7ff; }
-.card.red { color: #d4af37; } /* 红桃方块金色 */
+
+.card.selected {
+    transform: translateY(-12px);
+    border-color: #0074d9;
+    background: #e8f4ff;
+}
+
+.card.red {
+    color: #e63946;
+}
+
+#landlordMark {
+    color: #ffd700;
+    font-size: 14px;
+    margin-left: 6px;
+}
