@@ -27,7 +27,8 @@ let isMyTurn = false;
 let hasCalledLord = false;
 
 // 你当前的穿透地址
-const WS_RELAY = "wss://5cb875af.cpolar.io";
+const WS_RELAY = "ws://10.195.69.95:3000";
+
 
 
 
