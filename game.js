@@ -27,7 +27,7 @@ let isMyTurn = false;
 let hasCalledLord = false;
 
 // 你当前的穿透地址
-const WS_RELAY = "wss://landlord-game-ui1d.vercel.app";
+const WS_RELAY = "wss://768f66b.cpolar.io";
 
 
 
