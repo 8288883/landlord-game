@@ -26,7 +26,7 @@ let isMyTurn = false;
 let hasCalledLord = false;
 
 // 更换为更稳定的 WebSocket 中继服务器
-const WS_RELAY = "wss://laboratory-employee-action-lowest.trycloudflare.com";
+const WS_RELAY = "wss://7eae11e8ddf4a041-112-96-91-81.serveousercontent.com";
 
 
 // ================= 联机逻辑 =================
