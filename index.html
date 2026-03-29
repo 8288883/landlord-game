@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>斗地主 - 随时开战</title>
+    <title>斗地主 - 联机大厅</title>
     <style>
         * {
             box-sizing: border-box;
@@ -64,6 +64,21 @@
             border-radius: 20px;
             font-family: monospace;
             font-size: 1.2rem;
+        }
+        .join-area {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        .join-area input {
+            padding: 8px 12px;
+            border-radius: 40px;
+            border: none;
+            outline: none;
+            font-size: 1rem;
+            width: 140px;
+            text-align: center;
         }
         .player-list {
             display: flex;
@@ -279,6 +294,11 @@
             <button onclick="copyRoomCode()" style="padding: 4px 12px; font-size: 0.8rem;">📋 复制</button>
         </div>
 
+        <div class="join-area">
+            <input type="text" id="joinRoomId" placeholder="输入房间号加入">
+            <button onclick="joinRoom()" class="btn-primary">➕ 加入房间</button>
+        </div>
+
         <div class="player-list">
             <div class="player-slot" id="player1Slot">
                 <div class="player-avatar">👤</div>
@@ -298,8 +318,6 @@
         </div>
 
         <div class="btn-group">
-            <button onclick="addBot()" class="btn-primary" id="addBotBtn">🤖 邀请机器人</button>
-            <button onclick="removeBot()" class="btn-danger" id="removeBotBtn">🗑️ 移除机器人</button>
             <button onclick="startGame()" class="btn-success" id="startGameBtn" disabled>🎮 开始游戏</button>
         </div>
         
@@ -308,8 +326,9 @@
         </div>
         
         <div class="tip-text">
-            💡 可以邀请机器人对战，或等待真人玩家通过房间号加入<br>
-            📱 分享房间号给好友，他们输入后即可加入
+            💡 分享房间号给好友，他们输入后即可加入<br>
+            📱 房主可以开始游戏，支持 2~3 人联机<br>
+            🤖 如果需要机器人，可在游戏模式中选择（房主决定）
         </div>
     </div>
 
@@ -349,190 +368,118 @@
     </div>
 </div>
 
-<script>
-// 大厅管理逻辑
-let currentRoomId = generateRoomId();
-let isHost = true; // 创建房间的人就是房主
-let botCount = 0;
-let realPlayerCount = 1; // 自己算一个真人
-
-// 生成6位房间号
-function generateRoomId() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-// 更新大厅UI
-function updateLobbyUI() {
-    document.getElementById("roomCodeDisplay").innerText = currentRoomId;
-    
-    // 更新玩家槽位显示
-    const playerNames = ["玩家1", "等待加入", "等待加入"];
-    const playerStatuses = ["✅ 已准备", "⏳ 等待玩家", "⏳ 等待玩家"];
-    
-    // 根据实际玩家情况更新
-    if (realPlayerCount >= 2) {
-        playerNames[1] = `玩家${2}`;
-        playerStatuses[1] = "✅ 已准备";
-    }
-    if (realPlayerCount >= 3) {
-        playerNames[2] = `玩家${3}`;
-        playerStatuses[2] = "✅ 已准备";
-    }
-    
-    // 如果有机器人，显示机器人
-    if (botCount >= 1 && realPlayerCount < 2) {
-        playerNames[1] = "🤖 机器人";
-        playerStatuses[1] = "🤖 AI 已准备";
-    }
-    if (botCount >= 2 || (botCount >= 1 && realPlayerCount >= 2)) {
-        playerNames[2] = "🤖 机器人";
-        playerStatuses[2] = "🤖 AI 已准备";
-    }
-    
-    document.getElementById("player1Name").innerText = playerNames[0];
-    document.getElementById("player2Name").innerText = playerNames[1];
-    document.getElementById("player3Name").innerText = playerNames[2];
-    document.getElementById("player1Status").innerText = playerStatuses[0];
-    document.getElementById("player2Status").innerHTML = playerStatuses[1];
-    document.getElementById("player3Status").innerHTML = playerStatuses[2];
-    
-    // 控制开始游戏按钮
-    const totalPlayers = realPlayerCount + botCount;
-    const startBtn = document.getElementById("startGameBtn");
-    if (totalPlayers >= 2) {
-        startBtn.disabled = false;
-        document.getElementById("lobbyStatus").innerHTML = `✅ 已有 ${totalPlayers} 人，可以开始游戏`;
-    } else {
-        startBtn.disabled = true;
-        document.getElementById("lobbyStatus").innerHTML = `⏳ 等待更多玩家加入... (当前 ${totalPlayers}/2+)`;
-    }
-}
-
-// 添加机器人
-function addBot() {
-    const totalPlayers = realPlayerCount + botCount;
-    if (totalPlayers >= 3) {
-        alert("最多只能有3个玩家（包括机器人和真人）");
-        return;
-    }
-    botCount++;
-    updateLobbyUI();
-}
-
-// 移除机器人
-function removeBot() {
-    if (botCount > 0) {
-        botCount--;
-        updateLobbyUI();
-    } else {
-        alert("没有可移除的机器人");
-    }
-}
-
-// 复制房间号
-function copyRoomCode() {
-    navigator.clipboard.writeText(currentRoomId).then(() => {
-        alert("房间号已复制: " + currentRoomId);
-    });
-}
-
-// 模拟真人加入（实际应该通过 WebSocket，这里先做UI演示）
-// 真实实现中，这些数据会通过 WebSocket 同步
-function simulatePlayerJoin() {
-    if (realPlayerCount < 3) {
-        realPlayerCount++;
-        updateLobbyUI();
-    }
-}
-
-// 开始游戏
-function startGame() {
-    const totalPlayers = realPlayerCount + botCount;
-    if (totalPlayers < 2) {
-        alert("至少需要2个玩家才能开始游戏");
-        return;
-    }
-    
-    // 确定游戏模式
-    let mode = "3p";
-    if (realPlayerCount === 1 && botCount === 2) mode = "1p2ai";
-    if (realPlayerCount === 2 && botCount === 1) mode = "2p1ai";
-    
-    // 构建玩家列表
-    let players = ["player1"];
-    
-    // 添加其他真人玩家（这里简化，实际通过 WebSocket 获取）
-    if (realPlayerCount >= 2) players.push("player2");
-    if (realPlayerCount >= 3) players.push("player3");
-    
-    // 添加机器人
-    for (let i = 0; i < botCount; i++) {
-        players.push(`ai${i+1}`);
-    }
-    
-    // 这里需要调用 game.js 中的初始化逻辑
-    // 由于 game.js 还未加载，我们通过事件触发
-    if (window.initGameWithConfig) {
-        window.initGameWithConfig(players, mode);
-    } else {
-        console.log("等待 game.js 加载完成");
-        // 等待 game.js 加载
-        setTimeout(() => {
-            if (window.initGameWithConfig) {
-                window.initGameWithConfig(players, mode);
-            }
-        }, 100);
-    }
-}
-
-// 初始化 WebSocket 连接（简化版，实际需要与 game.js 配合）
-function initWebSocket() {
-    // 这里应该使用与 game.js 相同的连接逻辑
-    // 暂时先模拟连接成功
-    setTimeout(() => {
-        document.getElementById("lobbyStatus").innerHTML = "✅ 服务器已连接，可以开始游戏";
-        document.getElementById("lobbyStatus").style.background = "rgba(40,167,69,0.5)";
-    }, 1000);
-}
-
-// 页面加载完成后自动初始化
-window.addEventListener('DOMContentLoaded', () => {
-    // 生成房间号
-    currentRoomId = generateRoomId();
-    updateLobbyUI();
-    
-    // 模拟服务器连接
-    initWebSocket();
-    
-    // 模拟其他玩家加入（演示用，实际通过 WebSocket）
-    // 5秒后随机加入一个真人玩家演示
-    setTimeout(() => {
-        if (realPlayerCount < 3 && confirm("模拟玩家加入演示，是否添加一个真人玩家？")) {
-            simulatePlayerJoin();
-        }
-    }, 3000);
-});
-
-// 导出函数供 game.js 调用
-window.updateLobbyUI = updateLobbyUI;
-window.startGameFromLobby = startGame;
-
-// 等待 game.js 加载完成后，将大厅函数注入
-window.initGameWithConfig = function(players, mode) {
-    // 隐藏大厅，显示游戏界面
-    document.getElementById("lobbyDiv").style.display = "none";
-    document.getElementById("gameDiv").style.display = "block";
-    document.getElementById("displayRoomId").innerText = currentRoomId;
-    
-    // 调用 game.js 的初始化函数
-    if (typeof window.startGameWithPlayers === 'function') {
-        window.startGameWithPlayers(players, mode);
-    } else {
-        console.error("game.js 未正确加载");
-    }
-};
-</script>
-
 <script src="game.js"></script>
+<script>
+    // 大厅逻辑
+    let currentRoomId = "";
+    let isHost = false;
+    let playersList = [];
+
+    // 生成6位房间号
+    function generateRoomId() {
+        return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
+    // 更新大厅UI
+    function updateLobbyUI(players) {
+        playersList = players || (window.getCurrentPlayers ? window.getCurrentPlayers() : []);
+        const totalPlayers = playersList.length;
+
+        // 更新玩家槽位显示
+        const playerNames = ["玩家1", "等待加入", "等待加入"];
+        const playerStatuses = ["✅ 已准备", "⏳ 等待玩家", "⏳ 等待玩家"];
+        
+        for (let i = 0; i < playersList.length && i < 3; i++) {
+            let name = playersList[i];
+            if (name === window.playerId) name = "我";
+            playerNames[i] = name;
+            playerStatuses[i] = "✅ 已准备";
+        }
+        
+        document.getElementById("player1Name").innerText = playerNames[0];
+        document.getElementById("player2Name").innerText = playerNames[1];
+        document.getElementById("player3Name").innerText = playerNames[2];
+        document.getElementById("player1Status").innerHTML = playerStatuses[0];
+        document.getElementById("player2Status").innerHTML = playerStatuses[1];
+        document.getElementById("player3Status").innerHTML = playerStatuses[2];
+        
+        // 控制开始游戏按钮
+        const startBtn = document.getElementById("startGameBtn");
+        if (totalPlayers >= 2 && isHost) {
+            startBtn.disabled = false;
+            document.getElementById("lobbyStatus").innerHTML = `✅ 已有 ${totalPlayers} 人，可以开始游戏 (你是房主)`;
+        } else if (totalPlayers >= 2 && !isHost) {
+            startBtn.disabled = true;
+            document.getElementById("lobbyStatus").innerHTML = `✅ 已有 ${totalPlayers} 人，等待房主开始游戏`;
+        } else {
+            startBtn.disabled = true;
+            document.getElementById("lobbyStatus").innerHTML = `⏳ 等待更多玩家加入... (当前 ${totalPlayers}/2+)`;
+        }
+    }
+
+    // 复制房间号
+    function copyRoomCode() {
+        navigator.clipboard.writeText(currentRoomId).then(() => {
+            alert("房间号已复制: " + currentRoomId);
+        });
+    }
+
+    // 加入房间
+    function joinRoom() {
+        const joinId = document.getElementById("joinRoomId").value.trim();
+        if (!joinId) return alert("请输入房间号");
+        window.joinRoomWithId(joinId);
+        // 加入后等待服务器同步，UI会更新
+    }
+
+    // 开始游戏
+    function startGame() {
+        if (!isHost) {
+            alert("只有房主可以开始游戏");
+            return;
+        }
+        const totalPlayers = playersList.length;
+        if (totalPlayers < 2) {
+            alert("至少需要2个玩家才能开始游戏");
+            return;
+        }
+        window.startGameFromLobby();
+    }
+
+    // 页面加载
+    window.addEventListener('DOMContentLoaded', () => {
+        // 注册大厅UI更新回调
+        if (window.registerLobbyCallback) {
+            window.registerLobbyCallback(updateLobbyUI);
+        } else {
+            console.error("game.js 未加载完成");
+        }
+        
+        // 生成房间号并显示
+        currentRoomId = generateRoomId();
+        document.getElementById("roomCodeDisplay").innerText = currentRoomId;
+        
+        // 自动创建房间
+        window.createRoomWithId(currentRoomId);
+        
+        // 定期同步状态（因为回调可能不是实时的，用轮询辅助）
+        setInterval(() => {
+            if (window.getCurrentPlayers) {
+                const newPlayers = window.getCurrentPlayers();
+                if (JSON.stringify(newPlayers) !== JSON.stringify(playersList)) {
+                    playersList = newPlayers;
+                    updateLobbyUI();
+                }
+            }
+            if (window.getIsHost) {
+                const newIsHost = window.getIsHost();
+                if (newIsHost !== isHost) {
+                    isHost = newIsHost;
+                    updateLobbyUI();
+                }
+            }
+        }, 500);
+    });
+</script>
 </body>
 </html>
