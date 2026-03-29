@@ -1,209 +1,67 @@
 // ================= 配置 =================
-let roomId = "";
-let playerId = "p" + Math.floor(Math.random() * 1000000);
-let mode = "3p";
-let players = [];
-let isHost = false;
-let ws;
-let reconnectTimer = null;
-
-// 游戏状态
+let seats = [
+    { type: 'human', name: '我', cards: [] },   // 玩家自己
+    { type: 'empty', name: '空位', cards: [] }, // 座位2
+    { type: 'empty', name: '空位', cards: [] }  // 座位3
+];
+let gameStarted = false;
 let gameState = {
     started: false,
     currentTurn: 0,
     landlord: -1,
-    players: {},
+    players: {},   // 索引 -> 手牌数组
     lastPlayed: null,
     lastPlayer: -1,
     baseCards: [],
     callLordStage: false,
     callLordOrder: []
 };
-
-// 个人数据
 let myCards = [];
 let selectedCards = [];
 let isMyTurn = false;
 let hasCalledLord = false;
 
-// 大厅回调
-let lobbyUpdateCallback = null;
-let isInGame = false;
-
-// 你的 ZeroTier 虚拟IP（根据实际情况修改）
-const WS_RELAY = "ws://ea:59:ec:aa:c9:35:3000";
-
-// ================= 联机逻辑 =================
-function connectWS() {
-    if (ws) {
-        ws.onclose = null;
-        ws.onerror = null;
-        ws.onmessage = null;
-        clearInterval(ws.heartbeat);
-        ws.close();
+// ================= 辅助函数 =================
+function updateSeatUI() {
+    for (let i = 1; i <= 2; i++) {
+        const seat = seats[i];
+        const nameEl = document.getElementById(`player${i+1}Name`);
+        const countEl = document.getElementById(`player${i+1}CardsCount`);
+        const hostBtn = document.getElementById(`player${i+1}HostBtn`);
+        if (seat.type === 'empty') {
+            nameEl.innerText = '空位';
+            countEl.innerText = '0张';
+            hostBtn.style.display = 'inline-block';
+            hostBtn.innerText = '🤖 托管';
+        } else {
+            nameEl.innerText = seat.name;
+            countEl.innerText = `${seat.cards.length}张`;
+            hostBtn.style.display = 'none';
+        }
     }
-
-    ws = new WebSocket(WS_RELAY);
-    document.getElementById("roomStatus").innerText = "🔄 正在连接服务器...";
-
-    ws.onopen = () => {
-        document.getElementById("roomStatus").innerText = "✅ 已连接，可以开始游戏";
-        ws.heartbeat = setInterval(() => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: "ping", roomId, playerId }));
-            }
-        }, 15000);
-
-        if (roomId) {
-            setTimeout(() => {
-                isHost ? sendMsg({ type: "create", roomId, playerId, mode })
-                    : sendMsg({ type: "join", roomId, playerId });
-            }, 300);
-        }
-    };
-
-    ws.onclose = () => {
-        document.getElementById("roomStatus").innerText = "❌ 连接断开，正在重连...";
-        clearInterval(ws.heartbeat);
-        clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(connectWS, 3000);
-    };
-
-    ws.onerror = (e) => {
-        console.error("WS 错误:", e);
-    };
-
-    ws.onmessage = (e) => {
-        try {
-            const msg = JSON.parse(e.data);
-            if (msg.type === "pong") return;
-            if (msg.roomId !== roomId) return;
-            onRoomMessage(msg);
-        } catch (e) {
-            console.error("消息解析失败:", e);
-        }
-    };
+    // 更新自己的牌数
+    document.getElementById("myInfo").innerHTML = `🃏 我: <span>${myCards.length}</span>张 <span id="landlordMark"></span>`;
 }
 
-function createRoom() {
-    roomId = document.getElementById("roomId").value.trim();
-    if (!roomId) return alert("请输入房间号");
-    isHost = true;
-    mode = document.getElementById("modeSelect").value;
-    connectWS();
-}
-
-function joinRoom() {
-    roomId = document.getElementById("roomId").value.trim();
-    if (!roomId) return alert("请输入房间号");
-    isHost = false;
-    connectWS();
-}
-
-function sendMsg(data) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-        alert("未连接服务器，自动重连中...");
+function fillAI(index) {
+    if (gameStarted) {
+        alert("游戏已经开始，无法添加AI");
         return;
     }
-    data.playerId = playerId;
-    data.roomId = roomId;
-    ws.send(JSON.stringify(data));
+    if (seats[index].type !== 'empty') return;
+    seats[index] = { type: 'ai', name: 'AI', cards: [] };
+    updateSeatUI();
+    checkAllSeatsFilled();
 }
 
-function onRoomMessage(msg) {
-    const statusEl = document.getElementById("roomStatus");
-    switch (msg.type) {
-        case "create":
-            if (!players.includes(msg.playerId)) players = [msg.playerId];
-            sendMsg({ type: "created", roomId, playerId });
-            break;
-        case "created":
-            statusEl.innerText = "🏠 房间已创建";
-            break;
-        case "join":
-            if (!players.includes(msg.playerId)) players.push(msg.playerId);
-            sendMsg({ type: "joined", roomId, playerId: msg.playerId, players });
-            break;
-        case "joined":
-            players = msg.players;
-            if (!isInGame && lobbyUpdateCallback) {
-                lobbyUpdateCallback(players);
-            }
-            if (statusEl) statusEl.innerText = `🎉 ${msg.playerId} 加入，当前：${msg.players.join(", ")}`;
-            break;
-        case "playerLeft":
-            players = players.filter(p => p !== msg.playerId);
-            if (!isInGame && lobbyUpdateCallback) {
-                lobbyUpdateCallback(players);
-            }
-            if (statusEl) statusEl.innerText = `👋 ${msg.playerId} 离开，当前：${players.join(", ")}`;
-            break;
-        case "startGame":
-            if (isHost) initGame();
-            break;
-        case "gameAction":
-            handleGameAction(msg.data);
-            break;
-        case "syncState":
-            syncGameState(msg.state);
-            break;
+function checkAllSeatsFilled() {
+    const allFilled = seats.every(seat => seat.type !== 'empty');
+    if (allFilled && !gameStarted) {
+        startGame();
     }
 }
 
-// ================= 游戏启动 =================
-function startGame() {
-    if (!isHost) return sendMsg({ type: "startGame" });
-    if (mode === "3p" && players.length < 3) return alert("需要3人");
-    if (mode === "2p1ai" && players.length < 2) return alert("需要2人");
-    if (mode === "1p2ai" && players.length < 1) return alert("需要1人");
-
-    // 补全AI
-    if (mode === "1p2ai" && players.length === 1) players.push("ai1", "ai2");
-    if (mode === "2p1ai" && players.length === 2) players.push("ai1");
-
-    initGame();
-}
-
-function initGame() {
-    const deck = generateDeck();
-    shuffle(deck);
-
-    gameState.players = {};
-    players.forEach((p, i) => {
-        gameState.players[p] = deck.slice(i * 17, (i + 1) * 17);
-    });
-    gameState.baseCards = deck.slice(51);
-    gameState.started = true;
-    gameState.callLordStage = true;
-    gameState.currentTurn = 0;
-    gameState.callLordOrder = [0, 1, 2];
-    gameState.lastPlayed = null;
-    gameState.lastPlayer = -1;
-
-    enterGameMode(gameState);
-    syncGameState(gameState);
-}
-
-function enterGameMode(state) {
-    document.getElementById("roomDiv").style.display = "none";
-    document.getElementById("gameDiv").style.display = "block";
-    document.getElementById("displayRoomId").innerText = roomId;
-    gameState = JSON.parse(JSON.stringify(state));
-    myCards = gameState.players[playerId] || [];
-    selectedCards = [];
-    hasCalledLord = false;
-    renderMyCards();
-    updatePlayerUI();
-    updateTurnUI();
-}
-
-// ================= 牌型与规则 =================
-const CardType = {
-    SINGLE: 1, PAIR: 2, TRIPLE: 3, TRIPLE_1: 4, TRIPLE_2: 5,
-    STRAIGHT: 6, DOUBLE_STRAIGHT: 7, TRIPLE_STRAIGHT: 8,
-    BOMB: 9, ROCKET: 10, INVALID: -1
-};
-
+// ================= 游戏初始化 =================
 function generateDeck() {
     const suits = ['♣', '♦', '♥', '♠'];
     const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
@@ -218,6 +76,130 @@ function shuffle(arr) {
         const j = Math.floor(Math.random() * (i + 1));
         [arr[i], arr[j]] = [arr[j], arr[i]];
     }
+}
+
+function startGame() {
+    if (gameStarted) return;
+    gameStarted = true;
+
+    // 发牌
+    const deck = generateDeck();
+    shuffle(deck);
+    const playersCount = 3;
+    for (let i = 0; i < playersCount; i++) {
+        seats[i].cards = deck.slice(i * 17, (i + 1) * 17);
+    }
+    const baseCards = deck.slice(51);
+    myCards = seats[0].cards;
+
+    // 初始化游戏状态
+    gameState = {
+        started: true,
+        currentTurn: 0,
+        landlord: -1,
+        players: seats.map(s => s.cards),
+        lastPlayed: null,
+        lastPlayer: -1,
+        baseCards: baseCards,
+        callLordStage: true,
+        callLordOrder: [0, 1, 2]
+    };
+
+    // 进入游戏模式
+    enterGameMode();
+}
+
+function enterGameMode() {
+    document.getElementById("turnIndicator").innerText = "叫地主阶段：我";
+    renderMyCards();
+    updatePlayerUI();
+    updateTurnUI();
+    // 开始叫地主流程
+    nextCallLord();
+}
+
+function nextCallLord() {
+    if (!gameState.callLordStage) return;
+    const currentPlayer = gameState.currentTurn;
+    if (currentPlayer === 0) {
+        // 轮到玩家
+        document.getElementById("callLordBtn").style.display = "inline-block";
+        document.getElementById("noLordBtn").style.display = "inline-block";
+        document.getElementById("turnIndicator").innerText = "叫地主阶段：轮到你叫地主";
+    } else {
+        // AI 叫地主
+        setTimeout(() => {
+            if (gameState.callLordStage && gameState.currentTurn === currentPlayer) {
+                // AI 随机决定叫或不叫
+                const choice = Math.random() < 0.3 ? 1 : 0; // 30%概率叫地主
+                callLord(choice);
+            }
+        }, 800);
+    }
+}
+
+function callLord(choice) {
+    if (!gameState.callLordStage || hasCalledLord) return;
+    hasCalledLord = true;
+    if (choice === 1) {
+        gameState.landlord = gameState.currentTurn;
+        gameState.callLordStage = false;
+        // 地主拿底牌
+        gameState.players[gameState.landlord].push(...gameState.baseCards);
+        gameState.players[gameState.landlord].sort((a,b) => getRank(a)-getRank(b));
+        if (gameState.landlord === 0) myCards = gameState.players[0];
+        // 开始出牌阶段
+        gameState.currentTurn = gameState.landlord;
+        gameState.lastPlayed = null;
+        gameState.lastPlayer = -1;
+        updateTurnUI();
+        updatePlayerUI();
+        document.getElementById("callLordBtn").style.display = "none";
+        document.getElementById("noLordBtn").style.display = "none";
+        document.getElementById("turnIndicator").innerText = `当前回合：${seats[gameState.currentTurn].name}`;
+        runAITurn(); // 如果地主是AI，自动出牌
+    } else {
+        // 不叫，轮到下家
+        gameState.currentTurn = (gameState.currentTurn + 1) % 3;
+        hasCalledLord = false;
+        if (gameState.currentTurn === gameState.callLordOrder[0]) {
+            // 所有人都没叫，默认地主为第一个玩家
+            gameState.landlord = gameState.callLordOrder[0];
+            gameState.callLordStage = false;
+            gameState.players[gameState.landlord].push(...gameState.baseCards);
+            gameState.players[gameState.landlord].sort((a,b) => getRank(a)-getRank(b));
+            if (gameState.landlord === 0) myCards = gameState.players[0];
+            gameState.currentTurn = gameState.landlord;
+            updateTurnUI();
+            updatePlayerUI();
+            document.getElementById("callLordBtn").style.display = "none";
+            document.getElementById("noLordBtn").style.display = "none";
+            document.getElementById("turnIndicator").innerText = `当前回合：${seats[gameState.currentTurn].name}`;
+            runAITurn();
+        } else {
+            nextCallLord();
+        }
+    }
+    updatePlayerUI();
+    renderMyCards();
+}
+
+// ================= 牌型规则 =================
+const CardType = {
+    SINGLE: 1, PAIR: 2, TRIPLE: 3, TRIPLE_1: 4, TRIPLE_2: 5,
+    STRAIGHT: 6, DOUBLE_STRAIGHT: 7, TRIPLE_STRAIGHT: 8,
+    BOMB: 9, ROCKET: 10, INVALID: -1
+};
+
+function getRank(card) {
+    if (card === '🃏小') return 14;
+    if (card === '🃏大') return 15;
+    const r = card.slice(1);
+    const rankMap = {
+        '3': 0, '4': 1, '5': 2, '6': 3, '7': 4, '8': 5, '9': 6, '10': 7,
+        'J': 8, 'Q': 9, 'K': 10, 'A': 11, '2': 12
+    };
+    return rankMap[r];
 }
 
 function getCardType(cards) {
@@ -262,17 +244,6 @@ function getCardType(cards) {
     return CardType.INVALID;
 }
 
-function getRank(card) {
-    if (card === '🃏小') return 14;
-    if (card === '🃏大') return 15;
-    const r = card.slice(1);
-    const rankMap = {
-        '3': 0, '4': 1, '5': 2, '6': 3, '7': 4, '8': 5, '9': 6, '10': 7,
-        'J': 8, 'Q': 9, 'K': 10, 'A': 11, '2': 12
-    };
-    return rankMap[r];
-}
-
 function compareCards(c1, c2) {
     const t1 = getCardType(c1);
     const t2 = getCardType(c2);
@@ -291,81 +262,79 @@ function compareCards(c1, c2) {
     return getMainRank(c1) > getMainRank(c2);
 }
 
-// ================= 叫地主 =================
-function callLord(choice) {
-    if (!gameState.callLordStage || hasCalledLord) return;
-    hasCalledLord = true;
-    sendMsg({ type: "gameAction", data: { action: "callLord", choice, playerId } });
-}
-
-function handleGameAction(data) {
-    if (data.action === "callLord") {
-        if (data.choice === 1) {
-            gameState.landlord = players.indexOf(data.playerId);
-            gameState.callLordStage = false;
-            gameState.players[data.playerId].push(...gameState.baseCards);
-            gameState.players[data.playerId].sort((a, b) => getRank(a) - getRank(b));
-        } else {
-            gameState.currentTurn = (gameState.currentTurn + 1) % 3;
-            if (gameState.currentTurn === gameState.callLordOrder[0]) {
-                gameState.callLordStage = false;
-                gameState.landlord = 0;
-            }
-        }
-        syncGameState(gameState);
-    } else if (data.action === "play") {
-        if (data.cards === null) {
-            gameState.currentTurn = (gameState.currentTurn + 1) % 3;
-        } else {
-            if (gameState.lastPlayed && !compareCards(data.cards, gameState.lastPlayed)) return;
-            gameState.lastPlayed = data.cards;
-            gameState.lastPlayer = gameState.currentTurn;
-            gameState.players[data.playerId] = gameState.players[data.playerId].filter(c => !data.cards.includes(c));
-            gameState.currentTurn = (gameState.currentTurn + 1) % 3;
-
-            if (gameState.players[data.playerId].length === 0) {
-                alert(`${data.playerId} 胜利！`);
-                gameState.started = false;
-            }
-        }
-        syncGameState(gameState);
+// ================= 出牌逻辑 =================
+function playSelected() {
+    if (!isMyTurn || selectedCards.length === 0) return;
+    if (getCardType(selectedCards) === CardType.INVALID) return alert("牌型不合法");
+    // 检查是否能压过上家
+    if (gameState.lastPlayed && !compareCards(selectedCards, gameState.lastPlayed)) {
+        alert("牌型不能压过上家");
+        return;
     }
-    if (isHost) runAI();
+    playCards(0, selectedCards);
+    selectedCards = [];
 }
 
-function syncGameState(state) {
-    gameState = JSON.parse(JSON.stringify(state));
-    myCards = gameState.players[playerId] || [];
-    renderMyCards();
-    updatePlayerUI();
-    updateTurnUI();
-    sendMsg({ type: "syncState", state: gameState });
+function pass() {
+    if (!isMyTurn || gameState.lastPlayer === gameState.currentTurn) return;
+    playCards(0, null);
 }
 
-// ================= AI =================
-function runAI() {
-    if (!gameState.started || gameState.callLordStage) return;
-    const curId = players[gameState.currentTurn];
-    if (!curId?.startsWith("ai")) return;
+function playCards(playerIdx, cards) {
+    if (cards === null) {
+        // 过
+        gameState.currentTurn = (gameState.currentTurn + 1) % 3;
+    } else {
+        // 出牌
+        if (gameState.lastPlayed && !compareCards(cards, gameState.lastPlayed)) return;
+        gameState.lastPlayed = cards;
+        gameState.lastPlayer = gameState.currentTurn;
+        // 移除手牌
+        gameState.players[playerIdx] = gameState.players[playerIdx].filter(c => !cards.includes(c));
+        if (playerIdx === 0) myCards = gameState.players[0];
+        gameState.currentTurn = (gameState.currentTurn + 1) % 3;
 
-    setTimeout(() => {
-        const hand = gameState.players[curId];
-        let play = null;
-        if (!gameState.lastPlayed) {
-            play = hand.length ? [hand[0]] : null;
-        } else {
-            for (const c of hand) {
-                if (compareCards([c], gameState.lastPlayed)) {
-                    play = [c];
-                    break;
-                }
-            }
+        if (gameState.players[playerIdx].length === 0) {
+            alert(`${seats[playerIdx].name} 胜利！`);
+            gameState.started = false;
+            gameStarted = false;
+            // 可以重置游戏，这里简单提示
+            return;
         }
-        sendMsg({ type: "gameAction", data: { action: "play", cards: play, playerId: curId } });
-    }, 800);
+    }
+    updatePlayerUI();
+    renderMyCards();
+    updateTurnUI();
+    runAITurn();
 }
 
-// ================= UI =================
+function runAITurn() {
+    if (!gameState.started || gameState.callLordStage) return;
+    const curIdx = gameState.currentTurn;
+    if (seats[curIdx].type === 'ai') {
+        setTimeout(() => {
+            if (gameState.currentTurn === curIdx && gameState.started) {
+                const hand = gameState.players[curIdx];
+                let play = null;
+                if (!gameState.lastPlayed) {
+                    // AI 出最小单牌
+                    play = hand.length ? [hand[0]] : null;
+                } else {
+                    // 简单 AI：找第一张能压过的单牌
+                    for (const c of hand) {
+                        if (compareCards([c], gameState.lastPlayed)) {
+                            play = [c];
+                            break;
+                        }
+                    }
+                }
+                playCards(curIdx, play);
+            }
+        }, 800);
+    }
+}
+
+// ================= UI 更新 =================
 function renderMyCards() {
     const el = document.getElementById("myCards");
     el.innerHTML = "";
@@ -387,23 +356,31 @@ function renderMyCards() {
 }
 
 function updatePlayerUI() {
-    const myIdx = players.indexOf(playerId);
-    document.getElementById("myInfo").innerHTML =
-        `我: <span>${myCards.length}</span>张 <span id="landlordMark">${myIdx === gameState.landlord ? "地主" : ""}</span>`;
-    const p2 = players[1] || "等待中";
-    const p3 = players[2] || "等待中";
-    document.getElementById("player2Info").innerHTML = `${p2}: <span>${gameState.players[p2]?.length || 0}</span>张`;
-    document.getElementById("player3Info").innerHTML = `${p3}: <span>${gameState.players[p3]?.length || 0}</span>张`;
-
+    // 更新座位牌数显示
+    for (let i = 0; i < 3; i++) {
+        if (i === 0) {
+            document.getElementById("myInfo").innerHTML = `🃏 我: <span>${myCards.length}</span>张 <span id="landlordMark">${gameState.landlord === i ? "地主" : ""}</span>`;
+        } else {
+            const nameEl = document.getElementById(`player${i+1}Name`);
+            const countEl = document.getElementById(`player${i+1}CardsCount`);
+            if (nameEl) {
+                nameEl.innerText = seats[i].name;
+                countEl.innerText = `${gameState.players[i]?.length || 0}张`;
+            }
+        }
+    }
+    // 底牌
     const baseEl = document.getElementById("baseCards");
     baseEl.innerHTML = "";
-    gameState.baseCards.forEach(c => {
-        const d = document.createElement("div");
-        d.className = "card" + (c.includes('♥') || c.includes('♦') ? " red" : "");
-        d.innerText = c.slice(1) || c;
-        baseEl.appendChild(d);
-    });
-
+    if (gameState.baseCards) {
+        gameState.baseCards.forEach(c => {
+            const d = document.createElement("div");
+            d.className = "card" + (c.includes('♥') || c.includes('♦') ? " red" : "");
+            d.innerText = c.slice(1) || c;
+            baseEl.appendChild(d);
+        });
+    }
+    // 上一手
     const lastEl = document.getElementById("lastPlayedArea");
     lastEl.innerHTML = "";
     if (gameState.lastPlayed) {
@@ -417,71 +394,15 @@ function updatePlayerUI() {
 }
 
 function updateTurnUI() {
-    isMyTurn = players[gameState.currentTurn] === playerId;
-    document.getElementById("turnIndicator").innerText = gameState.callLordStage
-        ? "叫地主阶段：" + players[gameState.currentTurn]
-        : "当前回合：" + players[gameState.currentTurn];
-
-    const playing = !gameState.callLordStage && gameState.started;
+    const curIdx = gameState.currentTurn;
+    isMyTurn = curIdx === 0;
+    const playing = gameState.started && !gameState.callLordStage;
     document.getElementById("playBtn").disabled = !isMyTurn || !playing;
     document.getElementById("passBtn").disabled = !isMyTurn || !playing;
-    document.getElementById("callLordBtn").style.display = gameState.callLordStage && isMyTurn ? "inline-block" : "none";
-    document.getElementById("noLordBtn").style.display = gameState.callLordStage && isMyTurn ? "inline-block" : "none";
-}
-
-function playSelected() {
-    if (!isMyTurn || selectedCards.length === 0) return;
-    if (getCardType(selectedCards) === CardType.INVALID) return alert("牌型不合法");
-    sendMsg({ type: "gameAction", data: { action: "play", cards: selectedCards, playerId } });
-    selectedCards = [];
-}
-
-function pass() {
-    if (!isMyTurn || gameState.lastPlayer === gameState.currentTurn) return;
-    sendMsg({ type: "gameAction", data: { action: "play", cards: null, playerId } });
-}
-
-// ================= 大厅接口 =================
-window.registerLobbyCallback = function(callback) {
-    lobbyUpdateCallback = callback;
-};
-
-window.getCurrentPlayers = function() {
-    return players;
-};
-
-window.getIsHost = function() {
-    return isHost;
-};
-
-window.getRoomId = function() {
-    return roomId;
-};
-
-window.startGameFromLobby = function() {
-    if (isHost) {
-        startGame();
-    } else {
-        sendMsg({ type: "startGame" });
+    if (!gameState.callLordStage) {
+        document.getElementById("turnIndicator").innerText = `当前回合：${seats[curIdx].name}`;
     }
-    // 隐藏大厅，显示游戏界面
-    document.getElementById("lobbyDiv").style.display = "none";
-    document.getElementById("gameDiv").style.display = "block";
-    isInGame = true;
-};
+}
 
-window.createRoomWithId = function(roomIdInput) {
-    roomId = roomIdInput;
-    isHost = true;
-    mode = "3p";  // 默认3人联机，房主可在游戏开始前选择模式
-    connectWS();
-};
-
-window.joinRoomWithId = function(roomIdInput) {
-    roomId = roomIdInput;
-    isHost = false;
-    connectWS();
-};
-
-// 初始连接（如果直接作为游戏启动，保留原逻辑）
-connectWS();
+// 初始化
+updateSeatUI();
