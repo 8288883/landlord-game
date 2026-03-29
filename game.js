@@ -31,7 +31,7 @@ let lobbyUpdateCallback = null;
 let isInGame = false;
 
 // 你的 ZeroTier 虚拟IP（根据实际情况修改）
-const WS_RELAY = "ws://10.195.69.95:3000";
+const WS_RELAY = "ws://ea:59:ec:aa:c9:35:3000";
 
 // ================= 联机逻辑 =================
 function connectWS() {
