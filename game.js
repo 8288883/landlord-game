@@ -26,12 +26,15 @@ let selectedCards = [];
 let isMyTurn = false;
 let hasCalledLord = false;
 
-// 你的 ZeroTier 虚拟IP
+// 大厅回调
+let lobbyUpdateCallback = null;
+let isInGame = false;
+
+// 你的 ZeroTier 虚拟IP（根据实际情况修改）
 const WS_RELAY = "ws://10.195.69.95:3000";
 
 // ================= 联机逻辑 =================
 function connectWS() {
-    // 清理旧连接，避免重复
     if (ws) {
         ws.onclose = null;
         ws.onerror = null;
@@ -45,14 +48,12 @@ function connectWS() {
 
     ws.onopen = () => {
         document.getElementById("roomStatus").innerText = "✅ 已连接，可以开始游戏";
-        // 15秒心跳，防止ZeroTier空闲掉线
         ws.heartbeat = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: "ping", roomId, playerId }));
             }
         }, 15000);
 
-        // 重连后自动重新进入房间
         if (roomId) {
             setTimeout(() => {
                 isHost ? sendMsg({ type: "create", roomId, playerId, mode })
@@ -124,11 +125,21 @@ function onRoomMessage(msg) {
             sendMsg({ type: "joined", roomId, playerId: msg.playerId, players });
             break;
         case "joined":
-            statusEl.innerText = `🎉 ${msg.playerId} 加入，当前：${msg.players.join(", ")}`;
             players = msg.players;
+            if (!isInGame && lobbyUpdateCallback) {
+                lobbyUpdateCallback(players);
+            }
+            if (statusEl) statusEl.innerText = `🎉 ${msg.playerId} 加入，当前：${msg.players.join(", ")}`;
+            break;
+        case "playerLeft":
+            players = players.filter(p => p !== msg.playerId);
+            if (!isInGame && lobbyUpdateCallback) {
+                lobbyUpdateCallback(players);
+            }
+            if (statusEl) statusEl.innerText = `👋 ${msg.playerId} 离开，当前：${players.join(", ")}`;
             break;
         case "startGame":
-            isHost && initGame();
+            if (isHost) initGame();
             break;
         case "gameAction":
             handleGameAction(msg.data);
@@ -323,12 +334,12 @@ function handleGameAction(data) {
 }
 
 function syncGameState(state) {
-    gameState = JSON.parse(JSON.stringify(state)); // 深拷贝防错乱
+    gameState = JSON.parse(JSON.stringify(state));
     myCards = gameState.players[playerId] || [];
     renderMyCards();
     updatePlayerUI();
     updateTurnUI();
-    sendMsg({ type: "syncState", state: gameState }); // 全员同步
+    sendMsg({ type: "syncState", state: gameState });
 }
 
 // ================= AI =================
@@ -430,55 +441,47 @@ function pass() {
     sendMsg({ type: "gameAction", data: { action: "play", cards: null, playerId } });
 }
 
-// 初始化连接
-connectWS();
-// 在 game.js 末尾添加以下代码
-
-// 导出的初始化函数，供大厅调用
-window.startGameWithPlayers = function(playersList, gameMode) {
-    // 设置全局变量
-    players = playersList;
-    mode = gameMode;
-    isHost = true; // 房主
-    
-    // 重新初始化游戏状态
-    gameState = {
-        started: true,
-        currentTurn: 0,
-        landlord: -1,
-        players: {},
-        lastPlayed: null,
-        lastPlayer: -1,
-        baseCards: [],
-        callLordStage: true,
-        callLordOrder: []
-    };
-    
-    // 初始化牌堆
-    const deck = generateDeck();
-    shuffle(deck);
-    
-    // 分配手牌
-    players.forEach((p, i) => {
-        gameState.players[p] = deck.slice(i * 17, (i + 1) * 17);
-    });
-    gameState.baseCards = deck.slice(51);
-    
-    // 设置叫地主顺序
-    gameState.callLordOrder = [0, 1, 2];
-    gameState.callLordStage = true;
-    
-    // 设置当前玩家
-    gameState.currentTurn = 0;
-    
-    // 进入游戏模式
-    enterGameMode(gameState);
-    
-    // 同步状态
-    syncGameState(gameState);
+// ================= 大厅接口 =================
+window.registerLobbyCallback = function(callback) {
+    lobbyUpdateCallback = callback;
 };
 
-// 确保原有函数存在，如果没有定义则添加
-if (typeof enterGameMode !== 'function') {
-    window.enterGameMode = enterGameMode;
-}
+window.getCurrentPlayers = function() {
+    return players;
+};
+
+window.getIsHost = function() {
+    return isHost;
+};
+
+window.getRoomId = function() {
+    return roomId;
+};
+
+window.startGameFromLobby = function() {
+    if (isHost) {
+        startGame();
+    } else {
+        sendMsg({ type: "startGame" });
+    }
+    // 隐藏大厅，显示游戏界面
+    document.getElementById("lobbyDiv").style.display = "none";
+    document.getElementById("gameDiv").style.display = "block";
+    isInGame = true;
+};
+
+window.createRoomWithId = function(roomIdInput) {
+    roomId = roomIdInput;
+    isHost = true;
+    mode = "3p";  // 默认3人联机，房主可在游戏开始前选择模式
+    connectWS();
+};
+
+window.joinRoomWithId = function(roomIdInput) {
+    roomId = roomIdInput;
+    isHost = false;
+    connectWS();
+};
+
+// 初始连接（如果直接作为游戏启动，保留原逻辑）
+connectWS();
