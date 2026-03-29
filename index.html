@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>斗地主 - 联机大厅</title>
+    <title>斗地主 - 本地对局</title>
     <style>
         * {
             box-sizing: border-box;
@@ -26,7 +26,7 @@
             width: 100%;
             margin: 0 auto;
         }
-        .panel {
+        .game-panel {
             background: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(2px);
             border-radius: 24px;
@@ -35,131 +35,6 @@
             box-shadow: 0 8px 20px rgba(0,0,0,0.3);
             border: 1px solid rgba(255,255,255,0.2);
         }
-        h1 {
-            text-align: center;
-            margin-bottom: 15px;
-            font-size: 1.8rem;
-            letter-spacing: 2px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        .room-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(0,0,0,0.3);
-            padding: 10px 15px;
-            border-radius: 40px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .room-info {
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
-        .room-code {
-            background: #ffc107;
-            color: #2c2c2c;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-family: monospace;
-            font-size: 1.2rem;
-        }
-        .join-area {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            justify-content: center;
-        }
-        .join-area input {
-            padding: 8px 12px;
-            border-radius: 40px;
-            border: none;
-            outline: none;
-            font-size: 1rem;
-            width: 140px;
-            text-align: center;
-        }
-        .player-list {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin: 20px 0;
-        }
-        .player-slot {
-            background: rgba(0,0,0,0.4);
-            border-radius: 16px;
-            padding: 15px;
-            text-align: center;
-            flex: 1;
-            min-width: 80px;
-        }
-        .player-avatar {
-            font-size: 3rem;
-            margin-bottom: 8px;
-        }
-        .player-name {
-            font-weight: bold;
-            font-size: 0.9rem;
-        }
-        .player-status {
-            font-size: 0.7rem;
-            color: #ffc107;
-            margin-top: 5px;
-        }
-        .waiting {
-            color: #aaa;
-        }
-        .btn-group {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin: 20px 0;
-            flex-wrap: wrap;
-        }
-        button {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 40px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        button:active {
-            transform: scale(0.96);
-        }
-        button:disabled {
-            background: #6c757d;
-            color: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-        .btn-primary {
-            background: #ffc107;
-            color: #2c2c2c;
-        }
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-        .status {
-            text-align: center;
-            margin-top: 15px;
-            font-size: 0.9rem;
-            background: rgba(0,0,0,0.5);
-            padding: 8px 16px;
-            border-radius: 40px;
-            display: inline-block;
-            width: auto;
-        }
-
-        /* 游戏界面 */
         .game-header {
             display: flex;
             justify-content: space-between;
@@ -177,12 +52,14 @@
             background: rgba(0,0,0,0.2);
             border-radius: 16px;
             padding: 8px;
+            position: relative;
         }
         .player-info {
             font-size: 0.9rem;
             margin-bottom: 6px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
         .card-back {
             display: flex;
@@ -256,6 +133,62 @@
             font-weight: bold;
             margin-left: 8px;
         }
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        button:active {
+            transform: scale(0.96);
+        }
+        button:disabled {
+            background: #6c757d;
+            color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-primary {
+            background: #ffc107;
+            color: #2c2c2c;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-sm {
+            padding: 4px 12px;
+            font-size: 0.8rem;
+        }
+        .empty-seat {
+            color: #ffaa66;
+            font-style: italic;
+        }
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 16px;
+            border-radius: 40px;
+            display: inline-block;
+            width: auto;
+        }
         .tip-text {
             font-size: 0.8rem;
             color: #ddd;
@@ -272,79 +205,35 @@
                 padding: 8px 16px;
                 font-size: 0.9rem;
             }
-            .player-slot {
-                padding: 10px;
-            }
-            .player-avatar {
-                font-size: 2rem;
-            }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <!-- 等待大厅界面 -->
-    <div id="lobbyDiv" class="panel">
-        <h1>🎮 斗地主大厅</h1>
-        
-        <div class="room-bar">
-            <span class="room-info">🏠 我的房间号：</span>
-            <span class="room-code" id="roomCodeDisplay">生成中...</span>
-            <button onclick="copyRoomCode()" style="padding: 4px 12px; font-size: 0.8rem;">📋 复制</button>
-        </div>
-
-        <div class="join-area">
-            <input type="text" id="joinRoomId" placeholder="输入房间号加入">
-            <button onclick="joinRoom()" class="btn-primary">➕ 加入房间</button>
-        </div>
-
-        <div class="player-list">
-            <div class="player-slot" id="player1Slot">
-                <div class="player-avatar">👤</div>
-                <div class="player-name" id="player1Name">玩家1</div>
-                <div class="player-status" id="player1Status">✅ 已准备</div>
-            </div>
-            <div class="player-slot" id="player2Slot">
-                <div class="player-avatar">🤖</div>
-                <div class="player-name" id="player2Name">等待加入</div>
-                <div class="player-status waiting" id="player2Status">⏳ 等待玩家</div>
-            </div>
-            <div class="player-slot" id="player3Slot">
-                <div class="player-avatar">🤖</div>
-                <div class="player-name" id="player3Name">等待加入</div>
-                <div class="player-status waiting" id="player3Status">⏳ 等待玩家</div>
-            </div>
-        </div>
-
-        <div class="btn-group">
-            <button onclick="startGame()" class="btn-success" id="startGameBtn" disabled>🎮 开始游戏</button>
-        </div>
-        
-        <div style="text-align: center;">
-            <div id="lobbyStatus" class="status">🔄 正在连接服务器...</div>
-        </div>
-        
-        <div class="tip-text">
-            💡 分享房间号给好友，他们输入后即可加入<br>
-            📱 房主可以开始游戏，支持 2~3 人联机<br>
-            🤖 如果需要机器人，可在游戏模式中选择（房主决定）
-        </div>
-    </div>
-
-    <!-- 游戏主界面 -->
-    <div id="gameDiv" class="panel" style="display:none">
+    <div class="game-panel" id="gameDiv">
         <div class="game-header">
-            <div>🏠 房间：<span id="displayRoomId"></span></div>
-            <div id="turnIndicator">🎴 游戏进行中...</div>
+            <div>🎴 斗地主</div>
+            <div id="turnIndicator">等待游戏开始...</div>
         </div>
 
-        <div class="player-area">
-            <div class="player-info" id="player2Info">👤 玩家2: <span>0</span>张</div>
+        <!-- 玩家2座位 -->
+        <div class="player-area" id="player2Area">
+            <div class="player-info">
+                <span id="player2Name">玩家2</span>
+                <span id="player2CardsCount">0张</span>
+                <button id="player2HostBtn" class="btn-sm" onclick="fillAI(1)">🤖 托管</button>
+            </div>
             <div class="card-back" id="player2Cards"></div>
         </div>
-        <div class="player-area">
-            <div class="player-info" id="player3Info">👤 玩家3: <span>0</span>张</div>
+
+        <!-- 玩家3座位 -->
+        <div class="player-area" id="player3Area">
+            <div class="player-info">
+                <span id="player3Name">玩家3</span>
+                <span id="player3CardsCount">0张</span>
+                <button id="player3HostBtn" class="btn-sm" onclick="fillAI(2)">🤖 托管</button>
+            </div>
             <div class="card-back" id="player3Cards"></div>
         </div>
 
@@ -369,117 +258,5 @@
 </div>
 
 <script src="game.js"></script>
-<script>
-    // 大厅逻辑
-    let currentRoomId = "";
-    let isHost = false;
-    let playersList = [];
-
-    // 生成6位房间号
-    function generateRoomId() {
-        return Math.floor(100000 + Math.random() * 900000).toString();
-    }
-
-    // 更新大厅UI
-    function updateLobbyUI(players) {
-        playersList = players || (window.getCurrentPlayers ? window.getCurrentPlayers() : []);
-        const totalPlayers = playersList.length;
-
-        // 更新玩家槽位显示
-        const playerNames = ["玩家1", "等待加入", "等待加入"];
-        const playerStatuses = ["✅ 已准备", "⏳ 等待玩家", "⏳ 等待玩家"];
-        
-        for (let i = 0; i < playersList.length && i < 3; i++) {
-            let name = playersList[i];
-            if (name === window.playerId) name = "我";
-            playerNames[i] = name;
-            playerStatuses[i] = "✅ 已准备";
-        }
-        
-        document.getElementById("player1Name").innerText = playerNames[0];
-        document.getElementById("player2Name").innerText = playerNames[1];
-        document.getElementById("player3Name").innerText = playerNames[2];
-        document.getElementById("player1Status").innerHTML = playerStatuses[0];
-        document.getElementById("player2Status").innerHTML = playerStatuses[1];
-        document.getElementById("player3Status").innerHTML = playerStatuses[2];
-        
-        // 控制开始游戏按钮
-        const startBtn = document.getElementById("startGameBtn");
-        if (totalPlayers >= 2 && isHost) {
-            startBtn.disabled = false;
-            document.getElementById("lobbyStatus").innerHTML = `✅ 已有 ${totalPlayers} 人，可以开始游戏 (你是房主)`;
-        } else if (totalPlayers >= 2 && !isHost) {
-            startBtn.disabled = true;
-            document.getElementById("lobbyStatus").innerHTML = `✅ 已有 ${totalPlayers} 人，等待房主开始游戏`;
-        } else {
-            startBtn.disabled = true;
-            document.getElementById("lobbyStatus").innerHTML = `⏳ 等待更多玩家加入... (当前 ${totalPlayers}/2+)`;
-        }
-    }
-
-    // 复制房间号
-    function copyRoomCode() {
-        navigator.clipboard.writeText(currentRoomId).then(() => {
-            alert("房间号已复制: " + currentRoomId);
-        });
-    }
-
-    // 加入房间
-    function joinRoom() {
-        const joinId = document.getElementById("joinRoomId").value.trim();
-        if (!joinId) return alert("请输入房间号");
-        window.joinRoomWithId(joinId);
-        // 加入后等待服务器同步，UI会更新
-    }
-
-    // 开始游戏
-    function startGame() {
-        if (!isHost) {
-            alert("只有房主可以开始游戏");
-            return;
-        }
-        const totalPlayers = playersList.length;
-        if (totalPlayers < 2) {
-            alert("至少需要2个玩家才能开始游戏");
-            return;
-        }
-        window.startGameFromLobby();
-    }
-
-    // 页面加载
-    window.addEventListener('DOMContentLoaded', () => {
-        // 注册大厅UI更新回调
-        if (window.registerLobbyCallback) {
-            window.registerLobbyCallback(updateLobbyUI);
-        } else {
-            console.error("game.js 未加载完成");
-        }
-        
-        // 生成房间号并显示
-        currentRoomId = generateRoomId();
-        document.getElementById("roomCodeDisplay").innerText = currentRoomId;
-        
-        // 自动创建房间
-        window.createRoomWithId(currentRoomId);
-        
-        // 定期同步状态（因为回调可能不是实时的，用轮询辅助）
-        setInterval(() => {
-            if (window.getCurrentPlayers) {
-                const newPlayers = window.getCurrentPlayers();
-                if (JSON.stringify(newPlayers) !== JSON.stringify(playersList)) {
-                    playersList = newPlayers;
-                    updateLobbyUI();
-                }
-            }
-            if (window.getIsHost) {
-                const newIsHost = window.getIsHost();
-                if (newIsHost !== isHost) {
-                    isHost = newIsHost;
-                    updateLobbyUI();
-                }
-            }
-        }, 500);
-    });
-</script>
 </body>
 </html>
