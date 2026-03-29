@@ -432,3 +432,53 @@ function pass() {
 
 // 初始化连接
 connectWS();
+// 在 game.js 末尾添加以下代码
+
+// 导出的初始化函数，供大厅调用
+window.startGameWithPlayers = function(playersList, gameMode) {
+    // 设置全局变量
+    players = playersList;
+    mode = gameMode;
+    isHost = true; // 房主
+    
+    // 重新初始化游戏状态
+    gameState = {
+        started: true,
+        currentTurn: 0,
+        landlord: -1,
+        players: {},
+        lastPlayed: null,
+        lastPlayer: -1,
+        baseCards: [],
+        callLordStage: true,
+        callLordOrder: []
+    };
+    
+    // 初始化牌堆
+    const deck = generateDeck();
+    shuffle(deck);
+    
+    // 分配手牌
+    players.forEach((p, i) => {
+        gameState.players[p] = deck.slice(i * 17, (i + 1) * 17);
+    });
+    gameState.baseCards = deck.slice(51);
+    
+    // 设置叫地主顺序
+    gameState.callLordOrder = [0, 1, 2];
+    gameState.callLordStage = true;
+    
+    // 设置当前玩家
+    gameState.currentTurn = 0;
+    
+    // 进入游戏模式
+    enterGameMode(gameState);
+    
+    // 同步状态
+    syncGameState(gameState);
+};
+
+// 确保原有函数存在，如果没有定义则添加
+if (typeof enterGameMode !== 'function') {
+    window.enterGameMode = enterGameMode;
+}
